@@ -13,7 +13,7 @@ import zio._
  * You can think of middlewares as a functions —
  *
  * {{{
- *   type Middleware[R, E, AIn, BIn, AOut, BOut] = Http[R, E, AIn, BIn] => Http[R, E, AOut, BOut]
+ *   type Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut] = Http[R, EIn, AIn, BIn] => Http[R, EOut, AOut, BOut]
  * }}}
  *
  * The `AIn` and `BIn` type params represent the type params of the input Http.
@@ -158,46 +158,46 @@ trait Middleware[-R, -EIn, +AIn, -BIn, +EOut, -AOut, +BOut] { self =>
   final def runBefore[R1 <: R, E1 >: EOut](effect: ZIO[R1, E1, Any]): Middleware[R1, EIn, AIn, BIn, E1, AOut, BOut] =
     self.contramapZIO(b => effect.as(b))
 
-  // /**
-  //  * Applies Middleware based only if the condition function evaluates to true
-  //  */
-  // final def when[AOut0 <: AOut](cond: AOut0 => Boolean): Middleware[R, E, AIn, BIn, AOut0, BOut] =
-  //   whenZIO(a => UIO(cond(a)))
+  /**
+   * Applies Middleware based only if the condition function evaluates to true
+   */
+  final def when[AOut0 <: AOut](cond: AOut0 => Boolean): Middleware[R, EIn, AIn, BIn, EOut, AOut0, BOut] =
+    whenZIO(a => UIO(cond(a)))
 
-  // /**
-  //  * Applies Middleware based only if the condition effectful function evaluates
-  //  * to true
-  //  */
-  // final def whenZIO[R1 <: R, E1 >: E, AOut0 <: AOut](
-  //   cond: AOut0 => ZIO[R1, E1, Boolean],
-  // ): Middleware[R1, E1, AIn, BIn, AOut0, BOut] =
-  //   Middleware.ifThenElseZIO[AOut0](cond(_))(
-  //     isTrue = _ => self,
-  //     isFalse = _ => Middleware.identity,
-  //   )
+  /**
+   * Applies Middleware based only if the condition effectful function evaluates
+   * to true
+   */
+  final def whenZIO[R1 <: R, EOut1 >: EOut, AOut0 <: AOut](
+    cond: AOut0 => ZIO[R1, EOut1, Boolean],
+  ): Middleware[R1, EIn, AIn, BIn, EOut1, AOut0, BOut] =
+    Middleware.ifThenElseZIO[AOut0](cond(_))(
+      isTrue = _ => self,
+      isFalse = _ => Middleware.identity,
+    )
 }
 
 object Middleware extends Web {
 
-  // /**
-  //  * Creates a middleware using specified encoder and decoder
-  //  */
-  // def codec[A, B]: PartialCodec[A, B] = new PartialCodec[A, B](())
+  /**
+   * Creates a middleware using specified encoder and decoder
+   */
+  def codec[A, B]: PartialCodec[A, B] = new PartialCodec[A, B](())
 
-  // /**
-  //  * Creates a middleware using specified effectful encoder and decoder
-  //  */
-  // def codecZIO[A, B]: PartialCodecZIO[A, B] = new PartialCodecZIO[A, B](())
+  /**
+   * Creates a middleware using specified effectful encoder and decoder
+   */
+  def codecZIO[A, B]: PartialCodecZIO[A, B] = new PartialCodecZIO[A, B](())
 
-  // /**
-  //  * Creates a middleware using specified function
-  //  */
-  // def collect[A]: PartialCollect[A] = new PartialCollect[A](())
+  /**
+   * Creates a middleware using specified function
+   */
+  def collect[A]: PartialCollect[A] = new PartialCollect[A](())
 
-  // /**
-  //  * Creates a middleware using specified effect function
-  //  */
-  // def collectZIO[A]: PartialCollectZIO[A] = new PartialCollectZIO[A](())
+  /**
+   * Creates a middleware using specified effect function
+   */
+  def collectZIO[A]: PartialCollectZIO[A] = new PartialCollectZIO[A](())
 
   /**
    * Creates a middleware which always fail with specified error
@@ -219,33 +219,33 @@ object Middleware extends Web {
   /**
    * An empty middleware that doesn't do anything
    */
-  def identity[E >: Nothing]: Middleware[Any, Nothing, Nothing, Any, E, Any, Nothing] =
-    new Middleware[Any, Nothing, Nothing, Any, E, Any, Nothing] {
-      override def apply[R1 <: Any](http: Http[R1, Nothing, Nothing, Any]): Http[R1, E, Any, Nothing] =
+  def identity[E >: Nothing]: Middleware[Any, Any, Nothing, Any, E, Any, Nothing] =
+    new Middleware[Any, Any, Nothing, Any, E, Any, Nothing] {
+      override def apply[R1 <: Any](http: Http[R1, Any, Nothing, Any]): Http[R1, E, Any, Nothing] =
         http.asInstanceOf[Http[R1, Nothing, Any, Nothing]]
     }
 
-  // /**
-  //  * Logical operator to decide which middleware to select based on the
-  //  * predicate.
-  //  */
-  // def ifThenElse[A]: PartialIfThenElse[A] = new PartialIfThenElse(())
+  /**
+   * Logical operator to decide which middleware to select based on the
+   * predicate.
+   */
+  def ifThenElse[A]: PartialIfThenElse[A] = new PartialIfThenElse(())
 
-  // /**
-  //  * Logical operator to decide which middleware to select based on the
-  //  * predicate effect.
-  //  */
-  // def ifThenElseZIO[A]: PartialIfThenElseZIO[A] = new PartialIfThenElseZIO(())
+  /**
+   * Logical operator to decide which middleware to select based on the
+   * predicate effect.
+   */
+  def ifThenElseZIO[A]: PartialIfThenElseZIO[A] = new PartialIfThenElseZIO(())
 
-  // /**
-  //  * Creates a new middleware using transformation functions
-  //  */
-  // def intercept[A, B]: PartialIntercept[A, B] = new PartialIntercept[A, B](())
+  /**
+   * Creates a new middleware using transformation functions
+   */
+  def intercept[A, B]: PartialIntercept[A, B] = new PartialIntercept[A, B](())
 
-  // /**
-  //  * Creates a new middleware using effectful transformation functions
-  //  */
-  // def interceptZIO[A, B]: PartialInterceptZIO[A, B] = new PartialInterceptZIO[A, B](())
+  /**
+   * Creates a new middleware using effectful transformation functions
+   */
+  def interceptZIO[A, B]: PartialInterceptZIO[A, B] = new PartialInterceptZIO[A, B](())
 
   /**
    * Creates a middleware which always succeed with specified value
@@ -259,76 +259,76 @@ object Middleware extends Web {
       Middleware.fromHttp(Http.collect[AOut] { case aout if f.isDefinedAt(aout) => f(aout) }).flatten
   }
 
-  // final class PartialCollectZIO[AOut](val unit: Unit) extends AnyVal {
-  //   def apply[R, E, AIn, BIn, BOut](
-  //     f: PartialFunction[AOut, ZIO[R, E, Middleware[R, E, AIn, BIn, AOut, BOut]]],
-  //   ): Middleware[R, E, AIn, BIn, AOut, BOut] =
-  //     Middleware.fromHttp(Http.collectZIO[AOut] { case aout if f.isDefinedAt(aout) => f(aout) }).flatten
-  // }
+  final class PartialCollectZIO[AOut](val unit: Unit) extends AnyVal {
+    def apply[R, EIn, AIn, EOut, BIn, BOut](
+      f: PartialFunction[AOut, ZIO[R, EOut, Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut]]],
+    ): Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut] =
+      Middleware.fromHttp(Http.collectZIO[AOut] { case aout if f.isDefinedAt(aout) => f(aout) }).flatten
+  }
 
-  // final class PartialIntercept[A, B](val unit: Unit) extends AnyVal {
-  //   def apply[S, BOut](incoming: A => S)(outgoing: (B, S) => BOut): Middleware[Any, Nothing, A, B, A, BOut] =
-  //     interceptZIO[A, B](a => UIO(incoming(a)))((b, s) => UIO(outgoing(b, s)))
-  // }
+  final class PartialIntercept[A, B](val unit: Unit) extends AnyVal {
+    def apply[S, BOut](incoming: A => S)(outgoing: (B, S) => BOut): Middleware[Any, Nothing, A, Nothing, B, A, BOut] =
+      interceptZIO[A, B](a => UIO(incoming(a)))((b, s) => UIO(outgoing(b, s)))
+  }
 
-  // final class PartialInterceptZIO[A, B](val unit: Unit) extends AnyVal {
-  //   def apply[R, E, S, BOut](
-  //     incoming: A => ZIO[R, Option[E], S],
-  //   ): PartialInterceptOutgoingZIO[R, E, A, S, B] =
-  //     new PartialInterceptOutgoingZIO(incoming)
-  // }
+  final class PartialInterceptZIO[A, B](val unit: Unit) extends AnyVal {
+    def apply[R, E, S, BOut](
+      incoming: A => ZIO[R, Option[E], S],
+    ): PartialInterceptOutgoingZIO[R, E, A, S, B] =
+      new PartialInterceptOutgoingZIO(incoming)
+  }
 
-  // final class PartialInterceptOutgoingZIO[-R, +E, A, +S, B](val incoming: A => ZIO[R, Option[E], S]) extends AnyVal {
-  //   def apply[R1 <: R, E1 >: E, BOut](
-  //     outgoing: (B, S) => ZIO[R1, Option[E1], BOut],
-  //   ): Middleware[R1, E1, A, B, A, BOut] =
-  //     new Middleware[R1, E1, A, B, A, BOut] {
-  //       override def apply[R2 <: R1, E2 >: E1](http: Http[R2, E2, A, B]): Http[R2, E2, A, BOut] =
-  //         Http.fromOptionFunction[A] { a =>
-  //           for {
-  //             s <- incoming(a)
-  //             b <- http(a)
-  //             c <- outgoing(b, s)
-  //           } yield c
-  //         }
-  //     }
-  // }
+  final class PartialInterceptOutgoingZIO[-R, +E, A, +S, B](val incoming: A => ZIO[R, Option[E], S]) extends AnyVal {
+    def apply[R1 <: R, E1 >: E, BOut](
+      outgoing: (B, S) => ZIO[R1, Option[E1], BOut],
+    ): Middleware[R1, E1, A, B, E1, A, BOut] =
+      new Middleware[R1, E1, A, B, E1, A, BOut] {
+        override def apply[R2 <: R1](http: Http[R2, E1, A, B]): Http[R2, E1, A, BOut] =
+          Http.fromOptionFunction[A] { a =>
+            for {
+              s <- incoming(a)
+              b <- http(a)
+              c <- outgoing(b, s)
+            } yield c
+          }
+      }
+  }
 
-  // final class PartialCodec[AOut, BIn](val unit: Unit) extends AnyVal {
-  //   def apply[E, AIn, BOut](
-  //     decoder: AOut => Either[E, AIn],
-  //     encoder: BIn => Either[E, BOut],
-  //   ): Middleware[Any, E, AIn, BIn, AOut, BOut] =
-  //     Middleware.identity.mapZIO((b: BIn) => ZIO.fromEither(encoder(b))).contramapZIO(a => ZIO.fromEither(decoder(a)))
-  // }
+  final class PartialCodec[AOut, BIn](val unit: Unit) extends AnyVal {
+    def apply[EIn, AIn, EOut, BOut](
+      decoder: AOut => Either[EOut, AIn],
+      encoder: BIn => Either[EOut, BOut],
+    ): Middleware[Any, EIn, AIn, BIn, EOut, AOut, BOut] =
+      Middleware.identity.mapZIO((b: BIn) => ZIO.fromEither(encoder(b))).contramapZIO(a => ZIO.fromEither(decoder(a)))
+  }
 
-  // final class PartialIfThenElse[AOut](val unit: Unit) extends AnyVal {
-  //   def apply[R, E, AIn, BIn, BOut](cond: AOut => Boolean)(
-  //     isTrue: AOut => Middleware[R, E, AIn, BIn, AOut, BOut],
-  //     isFalse: AOut => Middleware[R, E, AIn, BIn, AOut, BOut],
-  //   ): Middleware[R, E, AIn, BIn, AOut, BOut] =
-  //     Middleware
-  //       .fromHttp(Http.fromFunction[AOut] { a => if (cond(a)) isTrue(a) else isFalse(a) })
-  //       .flatten
-  // }
+  final class PartialIfThenElse[AOut](val unit: Unit) extends AnyVal {
+    def apply[R, EIn, AIn, EOut, BIn, BOut](cond: AOut => Boolean)(
+      isTrue: AOut => Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut],
+      isFalse: AOut => Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut],
+    ): Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut] =
+      Middleware
+        .fromHttp(Http.fromFunction[AOut] { a => if (cond(a)) isTrue(a) else isFalse(a) })
+        .flatten
+  }
 
-  // final class PartialIfThenElseZIO[AOut](val unit: Unit) extends AnyVal {
-  //   def apply[R, E, AIn, BIn, BOut](cond: AOut => ZIO[R, E, Boolean])(
-  //     isTrue: AOut => Middleware[R, E, AIn, BIn, AOut, BOut],
-  //     isFalse: AOut => Middleware[R, E, AIn, BIn, AOut, BOut],
-  //   ): Middleware[R, E, AIn, BIn, AOut, BOut] =
-  //     Middleware
-  //       .fromHttp(Http.fromFunctionZIO[AOut] { a => cond(a).map(b => if (b) isTrue(a) else isFalse(a)) })
-  //       .flatten
-  // }
+  final class PartialIfThenElseZIO[AOut](val unit: Unit) extends AnyVal {
+    def apply[R, EIn, AIn, EOut, BIn, BOut](cond: AOut => ZIO[R, EOut, Boolean])(
+      isTrue: AOut => Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut],
+      isFalse: AOut => Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut],
+    ): Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut] =
+      Middleware
+        .fromHttp(Http.fromFunctionZIO[AOut] { a => cond(a).map(b => if (b) isTrue(a) else isFalse(a)) })
+        .flatten
+  }
 
-  // final class PartialCodecZIO[AOut, BIn](val unit: Unit) extends AnyVal {
-  //   def apply[R, E, AIn, BOut](
-  //     decoder: AOut => ZIO[R, E, AIn],
-  //     encoder: BIn => ZIO[R, E, BOut],
-  //   ): Middleware[R, E, AIn, BIn, AOut, BOut] =
-  //     Middleware.identity.mapZIO(encoder).contramapZIO(decoder)
-  // }
+  final class PartialCodecZIO[AOut, BIn](val unit: Unit) extends AnyVal {
+    def apply[R, EIn, AIn, EOut, BOut](
+      decoder: AOut => ZIO[R, EOut, AIn],
+      encoder: BIn => ZIO[R, EOut, BOut],
+    ): Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut] =
+      Middleware.identity.mapZIO(encoder).contramapZIO(decoder)
+  }
 
   final class PartialContraMapZIO[-R, -EIn, +AIn, -BIn, -AOut, +EOut, +BOut, AOut0](
     val self: Middleware[R, EIn, AIn, BIn, EOut, AOut, BOut],
