@@ -12,7 +12,7 @@ package object http extends PathModule with RequestSyntax with RouteDecoderModul
   type UHttp[-A, +B]                         = Http[Any, Nothing, A, B]
   type ResponseZIO[-R, +E]                   = ZIO[R, E, Response]
   type Header                                = (CharSequence, CharSequence)
-  type UMiddleware[+AIn, -BIn, -AOut, +BOut] = Middleware[Any, Nothing, AIn, BIn, AOut, BOut]
+  type UMiddleware[+AIn, -BIn, -AOut, +BOut] = Middleware[Any, Nothing, AIn, BIn, Nothing, AOut, BOut]
 
   /**
    * Default HTTP Charset

@@ -29,9 +29,9 @@ sealed trait Http[-R, +E, -A, +B] extends (A => ZIO[R, Option[E], B]) { self =>
   /**
    * Attaches the provided middleware to the Http app
    */
-  final def @@[R1 <: R, E1 >: E, A1 <: A, B1 >: B, A2, B2](
-    mid: Middleware[R1, E1, A1, B1, A2, B2],
-  ): Http[R1, E1, A2, B2] = mid(self)
+  final def @@[R1 <: R, E1 >: E, A1 <: A, B1 >: B, E2, A2, B2](
+    mid: Middleware[R1, E1, A1, B1, E2, A2, B2],
+  ): Http[R1, E2, A2, B2] = mid(self)
 
   /**
    * Alias for flatmap
@@ -239,9 +239,9 @@ sealed trait Http[-R, +E, -A, +B] extends (A => ZIO[R, Option[E], B]) { self =>
   /**
    * Named alias for @@
    */
-  final def middleware[R1 <: R, E1 >: E, A1 <: A, B1 >: B, A2, B2](
-    mid: Middleware[R1, E1, A1, B1, A2, B2],
-  ): Http[R1, E1, A2, B2] = Http.RunMiddleware(self, mid)
+  final def middleware[R1 <: R, E1 >: E, A1 <: A, B1 >: B, E2, A2, B2](
+    mid: Middleware[R1, E1, A1, B1, E2, A2, B2],
+  ): Http[R1, E2, A2, B2] = Http.RunMiddleware(self, mid)
 
   /**
    * Named alias for `<>`
@@ -836,10 +836,10 @@ object Http {
     dd: Http[R, EE, A, BB],
   ) extends Http[R, EE, A, BB]
 
-  private final case class RunMiddleware[R, E, A1, B1, A2, B2](
+  private final case class RunMiddleware[R, E, A1, B1, E2, A2, B2](
     http: Http[R, E, A1, B1],
-    mid: Middleware[R, E, A1, B1, A2, B2],
-  ) extends Http[R, E, A2, B2]
+    mid: Middleware[R, E, A1, B1, E2, A2, B2],
+  ) extends Http[R, E2, A2, B2]
 
   private case class Attempt[A](a: () => A) extends Http[Any, Nothing, Any, A]
 
