@@ -26,7 +26,7 @@ trait Middleware[-R, -EIn, +AIn, -BIn, +EOut, -AOut, +BOut] { self =>
    * Creates a new middleware that passes the output Http of the current
    * middleware as the input to the provided middleware.
    */
-  final def >>>[R1 <: R, EIn1 >: EOut, EOut1 >: EOut, AIn1 <: AOut, BIn1 >: BOut, AOut1, BOut1](
+  final def >>>[R1 <: R, EIn1 >: EOut, AIn1 <: AOut, BIn1 >: BOut, EOut1, AOut1, BOut1](
     other: Middleware[R1, EIn1, AIn1, BIn1, EOut1, AOut1, BOut1],
   ): Middleware[R1, EIn, AIn, BIn, EOut1, AOut1, BOut1] = self andThen other
 
@@ -48,7 +48,7 @@ trait Middleware[-R, -EIn, +AIn, -BIn, +EOut, -AOut, +BOut] { self =>
   /**
    * Composes one middleware with another.
    */
-  final def andThen[R1 <: R, EIn1 >: EOut, AIn1 <: AOut, BIn1 >: BOut, EOut1 >: EOut, AOut1, BOut1](
+  final def andThen[R1 <: R, EIn1 >: EOut, AIn1 <: AOut, BIn1 >: BOut, EOut1, AOut1, BOut1](
     other: Middleware[R1, EIn1, AIn1, BIn1, EOut1, AOut1, BOut1],
   ): Middleware[R1, EIn, AIn, BIn, EOut1, AOut1, BOut1] =
     new Middleware[R1, EIn, AIn, BIn, EOut1, AOut1, BOut1] {
