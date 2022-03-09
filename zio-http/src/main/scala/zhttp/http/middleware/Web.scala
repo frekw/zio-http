@@ -87,7 +87,9 @@ private[zhttp] trait Web extends Cors with Csrf with Auth with HeaderModifier[Ht
   /**
    * Creates a new middleware using effectful transformation functions
    */
-  final def interceptZIOPatch[R, E, S](req: Request => ZIO[R, Option[E], S]): PartialInterceptZIOPatch[R, E, S] =
+  final def interceptZIOPatch[R, EIn, EOut, S](
+    req: Request => ZIO[R, Option[EOut], S],
+  ): PartialInterceptZIOPatch[R, EIn, EOut, S] =
     PartialInterceptZIOPatch(req)
 
   /**

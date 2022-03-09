@@ -267,23 +267,24 @@ object Middleware extends Web {
   }
 
   final class PartialIntercept[A, B](val unit: Unit) extends AnyVal {
-    def apply[S, BOut](incoming: A => S)(outgoing: (B, S) => BOut): Middleware[Any, Nothing, A, Nothing, B, A, BOut] =
+    def apply[S, BOut](incoming: A => S)(outgoing: (B, S) => BOut): Middleware[Any, Nothing, A, B, Nothing, A, BOut] =
       interceptZIO[A, B](a => UIO(incoming(a)))((b, s) => UIO(outgoing(b, s)))
   }
 
   final class PartialInterceptZIO[A, B](val unit: Unit) extends AnyVal {
-    def apply[R, E, S, BOut](
-      incoming: A => ZIO[R, Option[E], S],
-    ): PartialInterceptOutgoingZIO[R, E, A, S, B] =
+    def apply[R, EOut, S, BOut](
+      incoming: A => ZIO[R, Option[EOut], S],
+    ): PartialInterceptOutgoingZIO[R, EOut, A, S, B] =
       new PartialInterceptOutgoingZIO(incoming)
   }
 
-  final class PartialInterceptOutgoingZIO[-R, +E, A, +S, B](val incoming: A => ZIO[R, Option[E], S]) extends AnyVal {
-    def apply[R1 <: R, E1 >: E, BOut](
-      outgoing: (B, S) => ZIO[R1, Option[E1], BOut],
-    ): Middleware[R1, E1, A, B, E1, A, BOut] =
-      new Middleware[R1, E1, A, B, E1, A, BOut] {
-        override def apply[R2 <: R1](http: Http[R2, E1, A, B]): Http[R2, E1, A, BOut] =
+  final class PartialInterceptOutgoingZIO[-R, +EOut, A, +S, B](val incoming: A => ZIO[R, Option[EOut], S])
+      extends AnyVal {
+    def apply[R1 <: R, EOut1 >: EOut, BOut](
+      outgoing: (B, S) => ZIO[R1, Option[EOut1], BOut],
+    ): Middleware[R1, EOut, A, B, EOut1, A, BOut] =
+      new Middleware[R1, EOut, A, B, EOut1, A, BOut] {
+        override def apply[R2 <: R1](http: Http[R2, EOut, A, B]): Http[R2, EOut1, A, BOut] =
           Http.fromOptionFunction[A] { a =>
             for {
               s <- incoming(a)
