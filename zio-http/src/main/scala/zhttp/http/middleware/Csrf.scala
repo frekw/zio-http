@@ -17,10 +17,10 @@ private[zhttp] trait Csrf {
    *
    * https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#double-submit-cookie
    */
-  final def csrfGenerate[R, E](
+  final def csrfGenerate[R, EIn](
     tokenName: String = "x-csrf-token",
     tokenGen: ZIO[R, Nothing, String] = UIO(UUID.randomUUID.toString),
-  ): HttpMiddleware[R, E] =
+  ): HttpMiddleware[R, EIn, Nothing] =
     Middleware.addCookieZIO(tokenGen.map(Cookie(tokenName, _)))
 
   /**
@@ -33,7 +33,7 @@ private[zhttp] trait Csrf {
    *
    * https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#double-submit-cookie
    */
-  def csrfValidate(tokenName: String = "x-csrf-token"): HttpMiddleware[Any, Nothing] = {
+  def csrfValidate[EIn](tokenName: String = "x-csrf-token"): HttpMiddleware[Any, EIn, Nothing] = {
     Middleware.whenHeader(
       headers => {
         (headers.headerValue(tokenName), headers.cookieValue(tokenName)) match {
