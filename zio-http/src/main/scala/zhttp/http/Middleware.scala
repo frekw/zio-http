@@ -267,7 +267,9 @@ object Middleware extends Web {
   }
 
   final class PartialIntercept[A, B](val unit: Unit) extends AnyVal {
-    def apply[S, BOut](incoming: A => S)(outgoing: (B, S) => BOut): Middleware[Any, Nothing, A, B, Nothing, A, BOut] =
+    def apply[S, BOut](incoming: A => S)(
+      outgoing: (B, S) => BOut,
+    ): Middleware[Any, Any, A, B, Nothing, A, BOut] =
       interceptZIO[A, B](a => UIO(incoming(a)))((b, s) => UIO(outgoing(b, s)))
   }
 
@@ -280,11 +282,11 @@ object Middleware extends Web {
 
   final class PartialInterceptOutgoingZIO[-R, +EOut, A, +S, B](val incoming: A => ZIO[R, Option[EOut], S])
       extends AnyVal {
-    def apply[R1 <: R, EOut1 >: EOut, BOut](
+    def apply[R1 <: R, EIn >: EOut, EOut1 >: EIn, BOut](
       outgoing: (B, S) => ZIO[R1, Option[EOut1], BOut],
-    ): Middleware[R1, EOut, A, B, EOut1, A, BOut] =
-      new Middleware[R1, EOut, A, B, EOut1, A, BOut] {
-        override def apply[R2 <: R1](http: Http[R2, EOut, A, B]): Http[R2, EOut1, A, BOut] =
+    ): Middleware[R1, EIn, A, B, EOut1, A, BOut] =
+      new Middleware[R1, EIn, A, B, EOut1, A, BOut] {
+        override def apply[R2 <: R1](http: Http[R2, EIn, A, B]): Http[R2, EOut1, A, BOut] =
           Http.fromOptionFunction[A] { a =>
             for {
               s <- incoming(a)
@@ -294,6 +296,23 @@ object Middleware extends Web {
           }
       }
   }
+
+  val f = Middleware.collect[Request] {
+    case Method.OPTIONS -> _ =>
+      Middleware.succeed(1)
+    case Method.GET -> _     =>
+      Middleware.fail("nej")
+    case Method.GET -> _     =>
+      Middleware.fail("nej")
+  }
+
+  val f2 = Middleware.interceptZIO[Int, String](i => ZIO.succeed(i.toString()))
+  val f3 = f2 { case (_, _) => ZIO.fail("hi").mapError(Option(_)) }
+
+  val app = Http.fail("foo")
+  val e1  = Middleware.intercept[Int, String](_.toString) { case (_, _) => "HI" }
+
+  app @@ e1
 
   final class PartialCodec[AOut, BIn](val unit: Unit) extends AnyVal {
     def apply[EIn, AIn, EOut, BOut](

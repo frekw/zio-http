@@ -13,22 +13,22 @@ import java.io.IOException
 /**
  * Middlewares on an HttpApp
  */
-private[zhttp] trait Web extends Cors with Csrf with Auth with HeaderModifier[HttpMiddleware[Any, Nothing, Nothing]] {
+private[zhttp] trait Web extends Cors with Csrf with Auth with HeaderModifier[HttpMiddleware[Any, Any, Nothing]] {
   self =>
 
   /**
    * Updates the provided list of headers to the response
    */
-  final override def updateHeaders(update: Headers => Headers): HttpMiddleware[Any, Nothing, Nothing] =
+  final override def updateHeaders(update: Headers => Headers): HttpMiddleware[Any, Any, Nothing] =
     Middleware.updateResponse(_.updateHeaders(update))
 
   /**
    * Sets cookie in response headers
    */
-  final def addCookie[EIn](cookie: Cookie): HttpMiddleware[Any, Nothing, Nothing] =
+  final def addCookie(cookie: Cookie): HttpMiddleware[Any, Nothing, Nothing] =
     self.withSetCookie(cookie)
 
-  final def addCookieZIO[R, EIn, EOut](cookie: ZIO[R, EOut, Cookie]): HttpMiddleware[R, EIn, EOut] =
+  final def addCookieZIO[R, E](cookie: ZIO[R, E, Cookie]): HttpMiddleware[R, E, E] =
     patchZIO(_ => cookie.mapBoth(Option(_), c => Patch.addHeader(Headers.setCookie(c))))
 
   /**
@@ -87,34 +87,34 @@ private[zhttp] trait Web extends Cors with Csrf with Auth with HeaderModifier[Ht
   /**
    * Creates a new middleware using effectful transformation functions
    */
-  final def interceptZIOPatch[R, EIn, EOut, S](
-    req: Request => ZIO[R, Option[EOut], S],
-  ): PartialInterceptZIOPatch[R, EIn, EOut, S] =
+  final def interceptZIOPatch[R, E, S](
+    req: Request => ZIO[R, Option[E], S],
+  ): PartialInterceptZIOPatch[R, E, S] =
     PartialInterceptZIOPatch(req)
 
   /**
    * Creates a middleware that produces a Patch for the Response
    */
-  final def patch[R, EIn](f: Response => Patch): HttpMiddleware[R, EIn, Nothing] =
+  final def patch[R](f: Response => Patch): HttpMiddleware[R, Nothing, Nothing] =
     Middleware.interceptPatch(_ => ())((res, _) => f(res))
 
   /**
    * Creates a middleware that produces a Patch for the Response effectfully.
    */
-  final def patchZIO[R, EIn, EOut](f: Response => ZIO[R, Option[EOut], Patch]): HttpMiddleware[R, EIn, EOut] =
+  final def patchZIO[R, E](f: Response => ZIO[R, Option[E], Patch]): HttpMiddleware[R, E, E] =
     Middleware.interceptZIOPatch(_ => ZIO.unit)((res, _) => f(res))
 
   /**
    * Runs the effect after the middleware is applied
    */
-  final def runAfter[R, EIn, EOut](effect: ZIO[R, EOut, Any]): HttpMiddleware[R, EIn, EOut] =
+  final def runAfter[R, EIn, EOut >: EIn](effect: ZIO[R, EOut, Any]): HttpMiddleware[R, EIn, EOut] =
     Middleware.interceptZIO[Request, Response](_ => ZIO.unit)((res, _) => effect.mapBoth(Option(_), _ => res))
 
   /**
    * Runs the effect before the request is passed on to the HttpApp on which the
    * middleware is applied.
    */
-  final def runBefore[R, EIn, EOut](effect: ZIO[R, EOut, Any]): HttpMiddleware[R, EIn, EOut] =
+  final def runBefore[R, EOut](effect: ZIO[R, EOut, Any]): HttpMiddleware[R, Nothing, EOut] =
     Middleware.interceptZIOPatch(_ => effect.mapError(Option(_)).unit)((_, _) => UIO(Patch.empty))
 
   /**
@@ -145,7 +145,7 @@ private[zhttp] trait Web extends Cors with Csrf with Auth with HeaderModifier[Ht
   /**
    * Creates a middleware that updates the response produced
    */
-  final def updateResponse[R, EIn, EOut](f: Response => Response): HttpMiddleware[R, EIn, EOut] =
+  final def updateResponse[R, EOut](f: Response => Response): HttpMiddleware[R, Any, Nothing] =
     Middleware.intercept[Request, Response](_ => ())((res, _) => f(res))
 
   /**
@@ -185,8 +185,10 @@ object Web {
     }
   }
 
-  final case class PartialInterceptZIOPatch[R, EIn, EOut, S](req: Request => ZIO[R, Option[EOut], S]) extends AnyVal {
-    def apply[R1 <: R](res: (Response, S) => ZIO[R1, Option[EOut], Patch]): HttpMiddleware[R1, EIn, EOut] =
+  final case class PartialInterceptZIOPatch[R, EOut, S](req: Request => ZIO[R, Option[EOut], S]) extends AnyVal {
+    def apply[R1 <: R, EIn >: EOut, EOut1 >: EIn](
+      res: (Response, S) => ZIO[R1, Option[EOut1], Patch],
+    ): HttpMiddleware[R1, EIn, EOut1] =
       Middleware
         .interceptZIO[Request, Response](req(_))((response, state) =>
           res(response, state).map(patch => patch(response)),
