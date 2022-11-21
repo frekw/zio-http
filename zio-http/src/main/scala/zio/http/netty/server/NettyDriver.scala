@@ -81,7 +81,7 @@ object NettyDriver {
       serverConfig = sc,
     )
 
-  val default: ZLayer[ServerConfig, Throwable, Driver] = ZLayer.scoped {
+  val scoped: ZIO[Scope & ServerConfig, Throwable, Driver] = {
     val app  = ZLayer.succeed(
       new AtomicReference[(HttpApp[Any, Throwable], ZEnvironment[Any])]((Http.empty, ZEnvironment.empty)),
     )
@@ -118,4 +118,5 @@ object NettyDriver {
 
   }
 
+  val default: ZLayer[ServerConfig, Throwable, Driver] = ZLayer.scoped(scoped)
 }
