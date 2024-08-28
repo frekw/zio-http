@@ -93,8 +93,8 @@ object HttpGen {
       case JsonSchema.Object(properties, _, _)   =>
         properties.flatMap { case (key, value) => loop(value, Some(key)) }.toSeq
       case JsonSchema.Enum(values) => Seq(HttpVariable(getName(name), None, Some(s"enum: ${values.mkString(",")}")))
-      case JsonSchema.Null         => Seq.empty
-      case JsonSchema.AnyJson      => Seq.empty
+      case JsonSchema.Null                       => Seq.empty
+      case JsonSchema.AnyJson                    => Seq.empty
     }
 
     bodySchema0 match {
